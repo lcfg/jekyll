@@ -47,10 +47,14 @@ module Jekyll
 
           Jekyll.logger.info "Server address:", server_address(s, options)
 
-          if options['detach'] # detach the server
+          if options['detach'] && Process.respond_to?(:fork) # detach the server with Process.fork
             pid = Process.fork { s.start }
             Process.detach(pid)
             Jekyll.logger.info "Server detached with pid '#{pid}'.", "Run `kill -9 #{pid}' to stop the server."
+          elsif options['detach'] && Process.respond_to?(:spawn) && !!(RUBY_PLATFORM =~ /w(32|64)/)
+            pid = Process.spawn { start jekyll serve }
+            Jekyll.logger.info "Server detached in seperate cmd window."
+            Process.detach(pid)
           else # create a new server thread, then join it with current terminal
             t = Thread.new { s.start }
             trap("INT") { s.shutdown }
